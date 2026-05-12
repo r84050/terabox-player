@@ -31,7 +31,7 @@
         </video>
         <div id="quality-buttons" class="quality-selector"></div>
         <div id="fallback-section" class="fallback-link" style="display:none;">
-            <p>If the video doesn't play, try opening it directly:</p>
+            <p>If the video doesn\'t play, try opening it directly:</p>
             <a id="direct-link" href="#" target="_blank">Open Video in Browser</a>
         </div>
     </div>
@@ -49,16 +49,7 @@
 
         function setStatus(message, isError = false) {
             statusMessage.textContent = message;
-            statusMessage.style.color = isError ? '#ff5252' : '#ffeb3b';
-        }
-
-        function getQueryParams() {
-            const params = {};
-            window.location.search.substring(1).split("&").forEach(param => {
-                const parts = param.split("=");
-                params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || "");
-            });
-            return params;
+            statusMessage.style.color = isError ? \'#ff5252\' : \'#ffeb3b\';
         }
 
         function changeQuality(url, button) {
@@ -75,14 +66,14 @@
                 });
                 currentHls.on(Hls.Events.ERROR, function(event, data) {
                     setStatus(`HLS Error: ${data.type} - ${data.details}`, true);
-                    fallbackSection.style.display = 'block';
+                    fallbackSection.style.display = \'block\';
                 });
             } else if (video.canPlayType("video/mp4")) {
                 video.src = url;
                 video.play().then(() => setStatus("Playing MP4 stream.")).catch(e => setStatus(`Error playing MP4: ${e.message}`, true));
             } else {
                 setStatus("Neither HLS nor MP4 is supported by your browser.", true);
-                fallbackSection.style.display = 'block';
+                fallbackSection.style.display = \'block\';
             }
 
             // Update active button style
@@ -95,8 +86,8 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
-            const params = getQueryParams();
-            const videoDataString = params.videoData;
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoDataString = urlParams.get("videoData");
 
             if (videoDataString) {
                 try {
@@ -116,7 +107,7 @@
 
                     if (!primaryUrl && videoData.normal_dlink) {
                         primaryUrl = videoData.normal_dlink;
-                        qualities["MP4"] = primaryUrl; // Add MP4 as a quality option if it's the only one
+                        qualities["MP4"] = primaryUrl; // Add MP4 as a quality option if it\'s the only one
                     }
 
                     if (primaryUrl) {
@@ -139,15 +130,15 @@
                         changeQuality(primaryUrl, document.querySelector(".quality-selector button.active"));
                     } else {
                         setStatus("No playable video source found from TeraBox API.", true);
-                        fallbackSection.style.display = 'block';
+                        fallbackSection.style.display = \'block\';
                     }
                 } catch (e) {
-                    setStatus(`Error parsing video data: ${e.message}`, true);
-                    fallbackSection.style.display = 'block';
+                    setStatus(`Error parsing video data: ${e.message}. Raw data: ${videoDataString}`, true);
+                    fallbackSection.style.display = \'block\';
                 }
             } else {
                 setStatus("Video data not provided in URL.", true);
-                fallbackSection.style.display = 'block';
+                fallbackSection.style.display = \'block\';
             }
             // Initialize Telegram Web App (optional, but good practice)
             if (window.Telegram && window.Telegram.WebApp) {
