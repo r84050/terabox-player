@@ -1,0 +1,120 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeraBox Video Player</title>
+    <link href="https://cdn.plyr.io/3.7.8/plyr.css" rel="stylesheet">
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #1a1a1a; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { width: 90%; max-width: 800px; background-color: #2a2a2a; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); }
+        h1 { text-align: center; color: #00bcd4; margin-bottom: 20px; }
+        video { width: 100%; height: auto; border-radius: 4px; }
+        .quality-selector { text-align: center; margin-top: 15px; }
+        .quality-selector button { background-color: #00bcd4; color: white; border: none; padding: 8px 15px; margin: 5px; border-radius: 5px; cursor: pointer; font-size: 1em; }
+        .quality-selector button:hover { background-color: #0097a7; }
+        .quality-selector button.active { background-color: #007985; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="video-title">TeraBox Video</h1>
+        <video controls crossorigin playsinline>
+            <!-- Video source will be injected by JavaScript -->
+        </video>
+        <div id="quality-buttons" class="quality-selector"></div>
+    </div>
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        const player = new Plyr("video");
+        const video = document.querySelector("video");
+        const videoTitle = document.getElementById("video-title");
+        const qualityButtonsContainer = document.getElementById("quality-buttons");
+        let currentHls = null;
+
+        function getQueryParams() {
+            const params = {};
+            window.location.search.substring(1).split("&").forEach(param => {
+                const parts = param.split("=");
+                params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || "");
+            });
+            return params;
+        }
+
+        function changeQuality(url, button) {
+            if (currentHls) {
+                currentHls.destroy();
+            }
+            if (Hls.isSupported() && url.endsWith(".m3u8")) {
+                currentHls = new Hls();
+                currentHls.loadSource(url);
+                currentHls.attachMedia(video);
+                currentHls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else if (video.canPlayType("video/mp4")) {
+                video.src = url;
+                video.play();
+            } else {
+                console.error("Neither HLS nor MP4 is supported.");
+            }
+
+            // Update active button style
+            document.querySelectorAll(".quality-selector button").forEach(btn => {
+                btn.classList.remove("active");
+            });
+            if (button) {
+                button.classList.add("active");
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const params = getQueryParams();
+            const videoData = params.videoData ? JSON.parse(params.videoData) : null;
+
+            if (videoData) {
+                videoTitle.textContent = videoData.name || "TeraBox Video";
+
+                let primaryUrl = null;
+                let qualities = {};
+
+                if (videoData.fast_stream_url) {
+                    for (const q in videoData.fast_stream_url) {
+                        qualities[q] = videoData.fast_stream_url[q];
+                    }
+                    // Prioritize highest quality HLS
+                    primaryUrl = qualities["1080p"] || qualities["720p"] || qualities["480p"] || qualities["360p"] || Object.values(qualities)[0];
+                }
+
+                if (!primaryUrl && videoData.normal_dlink) {
+                    primaryUrl = videoData.normal_dlink;
+                    qualities["MP4"] = primaryUrl; // Add MP4 as a quality option if it's the only one
+                }
+
+                if (primaryUrl) {
+                    // Create quality buttons
+                    let firstButton = true;
+                    for (const quality in qualities) {
+                        const button = document.createElement("button");
+                        button.textContent = quality;
+                        button.dataset.url = qualities[quality];
+                        button.onclick = () => changeQuality(qualities[quality], button);
+                        qualityButtonsContainer.appendChild(button);
+                        if (firstButton) {
+                            button.classList.add("active");
+                            firstButton = false;
+                        }
+                    }
+                    changeQuality(primaryUrl, document.querySelector(".quality-selector button.active"));
+                } else {
+                    videoTitle.textContent = "No playable video found.";
+                }
+            } else {
+                videoTitle.textContent = "Video data not provided.";
+            }
+        });
+    </script>
+</body>
+</html>
